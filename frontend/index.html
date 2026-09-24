@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Clinical Document Reviewer</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #f8fafc;
+            color: #1e293b;
+            margin: 0;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        .card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        h2,
+        h3 {
+            margin-top: 0;
+            color: #0f172a;
+        }
+
+        label {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        textarea {
+            width: 100%;
+            height: 120px;
+            margin: 0.5rem 0 1rem;
+            padding: 0.75rem;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+        }
+
+        input[type="file"] {
+            margin-bottom: 1.5rem;
+        }
+
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            width: 100%;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+
+        .status-msg {
+            margin-top: 1rem;
+            font-weight: 600;
+            display: none;
+        }
+
+        .error {
+            color: #dc2626;
+        }
+
+        .loading {
+            color: #2563eb;
+        }
+
+        .summary-box {
+            background: #eff6ff;
+            border-left: 4px solid #2563eb;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .tag {
+            display: inline-block;
+            background: #e2e8f0;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            margin: 0.2rem;
+        }
+
+        .tag.alert {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .history-item {
+            border-bottom: 1px solid #e2e8f0;
+            padding: 0.75rem 0;
+            cursor: pointer;
+        }
+
+        .history-item:hover {
+            color: #2563eb;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <!-- Input Form -->
+        <div class="card">
+            <h2>Submit Clinical Document</h2>
+            <form id="docForm">
+                <label>Clinical Notes (Synthetic Data Only):</label>
+                <textarea id="textInput" placeholder="Type or paste clinical notes here..."></textarea>
+
+                <label>Or Upload Document (PDF / Image):</label><br>
+                <input type="file" id="fileInput" accept=".pdf,image/*"><br>
+
+                <button type="submit" id="submitBtn">Analyze Document</button>
+            </form>
+
+            <div id="loading" class="status-msg loading">Processing document via AI...</div>
+            <div id="error" class="status-msg error"></div>
+
+            <h3 style="margin-top: 2rem;">Previously Processed Reports</h3>
+            <div id="historyList">Loading history...</div>
+        </div>
+
+        <!-- Structured Report Viewer -->
+        <div class="card">
+            <h2>Structured Clinical Report</h2>
+            <div id="reportPlaceholder" style="color: #64748b;">Submit a document or select an entry from history to
+                view results.</div>
+            <div id="reportContent" style="display:none;">
+                <div class="summary-box">
+                    <strong>Report Summary:</strong>
+                    <p id="repSummary" style="margin: 0.5rem 0 0;"></p>
+                </div>
+
+                <h4>Patient Info</h4>
+                <p id="repPatient" style="font-size: 0.9rem;"></p>
+
+                <h4>Symptoms & Diagnoses</h4>
+                <div id="repSymptoms"></div>
+                <div id="repDiagnoses" style="margin-top: 0.5rem;"></div>
+
+                <h4>Medications & Vitals</h4>
+                <div id="repMeds"></div>
+                <div id="repVitals" style="margin-top: 0.5rem; font-size: 0.9rem;"></div>
+
+                <h4 style="color:#b91c1c;">Missing Info & Items Requiring Review</h4>
+                <div id="repReview"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = "http://127.0.0.1:8000";
+
+        async function loadHistory() {
+            try {
+                const res = await fetch(`${API_BASE}/reports`);
+                const data = await res.json();
+                const list = document.getElementById("historyList");
+                list.innerHTML = data.length === 0 ? "No reports found." : "";
+
+                data.forEach(item => {
+                    const div = document.createElement("div");
+                    div.className = "history-item";
+                    div.innerHTML = `<strong>#${item.id}</strong> - ${item.timestamp} <br><small>${item.status}</small>`;
+                    div.onclick = () => renderReport(item.detailed_report || item.report_data);
+                    list.appendChild(div);
+                });
+            } catch (e) {
+                document.getElementById("historyList").innerText = "Unable to fetch history.";
+            }
+        }
+
+        function renderReport(report) {
+            if (typeof report === "string") report = JSON.parse(report);
+            document.getElementById("reportPlaceholder").style.display = "none";
+            document.getElementById("reportContent").style.display = "block";
+
+            document.getElementById("repSummary").innerText = report.report_summary || "N/A";
+
+            const p = report.patient_information || {};
+            document.getElementById("repPatient").innerText = `Name: ${p.name || 'Unknown'} | Age: ${p.age || 'Unknown'} | Gender: ${p.gender || 'Unknown'}`;
+
+            const symContainer = document.getElementById("repSymptoms");
+            symContainer.innerHTML = "<strong>Symptoms: </strong>" + (report.symptoms?.map(s => `<span class="tag">${s}</span>`).join('') || 'None listed');
+
+            const diagContainer = document.getElementById("repDiagnoses");
+            diagContainer.innerHTML = "<strong>Diagnoses: </strong>" + (report.diagnoses?.map(d => `<span class="tag">${d}</span>`).join('') || 'None listed');
+
+            const medContainer = document.getElementById("repMeds");
+            medContainer.innerHTML = "<strong>Medications: </strong>" + (report.medications?.map(m => `<span class="tag">${typeof m === 'string' ? m : (m.name + ' ' + (m.dosage || ''))}</span>`).join('') || 'None listed');
+
+            const vitals = report.vitals || {};
+            document.getElementById("repVitals").innerHTML = `<strong>Vitals:</strong> BP: ${vitals.blood_pressure || 'N/A'}, HR: ${vitals.heart_rate || 'N/A'}`;
+
+            const revContainer = document.getElementById("repReview");
+            const issues = [...(report.missing_information || []), ...(report.potential_inconsistencies || []), ...(report.requires_review || [])];
+            revContainer.innerHTML = issues.length > 0 ? issues.map(i => `<span class="tag alert">${i}</span>`).join('') : '<span class="tag">No critical flags</span>';
+        }
+
+        document.getElementById("docForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const text = document.getElementById("textInput").value;
+            const file = document.getElementById("fileInput").files[0];
+            const loading = document.getElementById("loading");
+            const errorDiv = document.getElementById("error");
+
+            if (!text && !file) {
+                errorDiv.innerText = "Provide clinical notes or select a file.";
+                errorDiv.style.display = "block";
+                return;
+            }
+
+            loading.style.display = "block";
+            errorDiv.style.display = "none";
+
+            const formData = new FormData();
+            if (text) formData.append("text_input", text);
+            if (file) formData.append("file", file);
+
+            try {
+                const res = await fetch(`${API_BASE}/upload`, { method: "POST", body: formData });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || "Processing failed");
+                renderReport(data.report);
+                loadHistory();
+            } catch (err) {
+                errorDiv.innerText = err.message;
+                errorDiv.style.display = "block";
+            } finally {
+                loading.style.display = "none";
+            }
+        });
+
+        loadHistory();
+    </script>
+
+</body>
+
+</html>

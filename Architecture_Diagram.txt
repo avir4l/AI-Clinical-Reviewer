@@ -1,0 +1,13 @@
+graph TD
+    Client["Frontend: Web UI (HTML5 / Vanilla JS)"]
+    API["Backend API: FastAPI (Python)"]
+    DB[("Data Persistence: SQLite")]
+    AI["AI/ML Layer: Google Gemini API (Multimodal)"]
+
+    Client -- "1. Uploads Text, Image, or PDF" --> API
+    API -- "2. Validates & Sends Document Payload" --> AI
+    AI -- "3. Returns Structured JSON Clinical Analysis" --> API
+    API -- "4. Persists Report & Metadata" --> DB
+    API -- "5. Returns Processed Report" --> Client
+    Client -- "6. Requests Historical Reports" --> API
+    API -- "7. Queries Completed Reports" --> DB
