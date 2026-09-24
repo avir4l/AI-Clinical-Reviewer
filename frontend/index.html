@@ -10,6 +10,7 @@
             box-sizing: border-box;
         }
 
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background: #f8fafc;
@@ -171,11 +172,16 @@
     </div>
 
     <script>
-        const API_BASE = "http://127.0.0.1:8000";
+        const API_BASE = "https://dial-unsubtle-ceremony.ngrok-free.dev";
 
         async function loadHistory() {
             try {
-                const res = await fetch(`${API_BASE}/reports`);
+                // 1. Added here for the GET request
+                const res = await fetch(`${API_BASE}/reports`, {
+                    headers: {
+                        "ngrok-skip-browser-warning": "true"
+                    }
+                });
                 const data = await res.json();
                 const list = document.getElementById("historyList");
                 list.innerHTML = data.length === 0 ? "No reports found." : "";
@@ -240,7 +246,14 @@
             if (file) formData.append("file", file);
 
             try {
-                const res = await fetch(`${API_BASE}/upload`, { method: "POST", body: formData });
+                // 2. Added here for the POST request
+                const res = await fetch(`${API_BASE}/upload`, {
+                    method: "POST",
+                    body: formData,
+                    headers: {
+                        "ngrok-skip-browser-warning": "true"
+                    }
+                });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.detail || "Processing failed");
                 renderReport(data.report);
@@ -255,7 +268,6 @@
 
         loadHistory();
     </script>
-
 </body>
 
 </html>
