@@ -2,7 +2,7 @@
 
 A FastAPI-based web application that leverages the Google Gemini API to analyze, structure, and synthesize raw clinical notes and medical documents into standardized clinical reports. 
 
-**[🎥 Watch the Demo Video Here](https://drive.google.com/file/d/1YC1aCnDkt3UMLLxqS5BO15bzUMK7eUEU/view?usp=sharing)** *(Link your screen recording here before submitting)*
+**[🎥 Watch the Demo Video Here](https://drive.google.com/file/d/1YC1aCnDkt3UMLLxqS5BO15bzUMK7eUEU/view?usp=sharing)**
 
 ## Features
 
