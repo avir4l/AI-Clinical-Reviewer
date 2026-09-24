@@ -3,7 +3,7 @@ import json
 import sqlite3
 from datetime import datetime
 from typing import Optional
-
+from fastapi.responses import FileResponse
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import google.generativeai as genai
@@ -73,6 +73,10 @@ Extract the data into ONLY a raw JSON object matching this schema exactly:
 }
 Return ONLY valid JSON. Do not include markdown formatting ticks.
 """
+@app.get("/")
+async def serve_frontend():
+    # This path works because you run uvicorn from inside the 'api' folder
+    return FileResponse("../frontend/index.html")
 
 @app.post("/upload")
 async def analyze_document(
